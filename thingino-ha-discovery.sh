@@ -241,15 +241,15 @@ pub_button "reboot" "$HOST Reboot" "reboot"
 # ============================================
 echo "--- PTZ ---"
 if [ -x /usr/sbin/ptz-ctrl ]; then
-  pub_button "ptz_left"  "PTZ Left"  "echo a | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_left"  "$HOST PTZ Left"  "echo a | timeout 1 /usr/sbin/ptz-ctrl"
   pub_button "ptz_right" "$HOST PTZ Right" "echo d | timeout 1 /usr/sbin/ptz-ctrl"
-  pub_button "ptz_up"    "PTZ Up"    "echo w | timeout 1 /usr/sbin/ptz-ctrl"
-  pub_button "ptz_down"  "PTZ Down"  "echo s | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_up"    "$HOST PTZ Up"    "echo w | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_down"  "$HOST PTZ Down"  "echo s | timeout 1 /usr/sbin/ptz-ctrl"
 fi
 if [ -x /usr/sbin/ptz_presets ]; then
   for i in 0 1 2 3 4 5 6 7; do
-    pub_button "preset_${i}_load"   "Preset $i Load"   "/usr/sbin/ptz_presets $i"
-    pub_button "preset_${i}_save"   "Preset $i Save"   "/usr/sbin/ptz_presets -a $i Preset$i"
+    pub_button "preset_${i}_load"   "$HOST Preset $i Load"   "/usr/sbin/ptz_presets $i"
+    pub_button "preset_${i}_save"   "$HOST Preset $i Save"   "/usr/sbin/ptz_presets -a $i Preset$i"
     pub_button "preset_${i}_delete" "$HOST Preset $i Delete" "/usr/sbin/ptz_presets -r $i"
   done
 fi
@@ -321,9 +321,9 @@ pub_select "running_mode" "$HOST Running Mode" "/usr/sbin/thingino-cmd running_m
 # AUDIO CONTROLS
 # ============================================
 echo "--- Audio Controls ---"
-pub_switch "mic"         "Mic"          "/usr/sbin/thingino-cmd mic_on"    "/usr/sbin/thingino-cmd mic_off"
-pub_switch "mic_agc"     "Mic AGC"      "/usr/sbin/thingino-cmd mic_agc_on"  "/usr/sbin/thingino-cmd mic_agc_off"
-pub_switch "mic_hpf"     "Mic HPF"      "/usr/sbin/thingino-cmd mic_hpf_on"  "/usr/sbin/thingino-cmd mic_hpf_off"
+pub_switch "mic"         "$HOST Mic"          "/usr/sbin/thingino-cmd mic_on"    "/usr/sbin/thingino-cmd mic_off"
+pub_switch "mic_agc"     "$HOST Mic AGC"      "/usr/sbin/thingino-cmd mic_agc_on"  "/usr/sbin/thingino-cmd mic_agc_off"
+pub_switch "mic_hpf"     "$HOST Mic HPF"      "/usr/sbin/thingino-cmd mic_hpf_on"  "/usr/sbin/thingino-cmd mic_hpf_off"
 pub_switch "force_stereo" "$HOST Force Stereo" "/usr/sbin/thingino-cmd stereo_on"  "/usr/sbin/thingino-cmd stereo_off"
 
 pub_number "mic_vol"                   "$HOST Mic Volume"          "/usr/sbin/thingino-cmd mic_vol {{ value | int }}"                   0  100 1 ""    "$(pget audio.mic_vol)"
@@ -336,7 +336,7 @@ pub_number "mic_bitrate"               "$HOST Mic Bitrate"         "/usr/sbin/th
 pub_number "spk_vol"                   "$HOST Speaker Volume"      "/usr/sbin/thingino-cmd spk_vol {{ value | int }}"                   0  100 1 ""    "$(pget audio.spk_vol)"
 pub_number "spk_gain"                  "$HOST Speaker Gain"        "/usr/sbin/thingino-cmd spk_gain {{ value | int }}"                  0   31 1 ""    "$(pget audio.spk_gain)"
 
-pub_select "mic_format"     "Mic Codec"         "/usr/sbin/thingino-cmd mic_format {{ value }}" \
+pub_select "mic_format"     "$HOST Mic Codec"         "/usr/sbin/thingino-cmd mic_format {{ value }}" \
   "[\"AAC\",\"G711A\",\"G711U\",\"G726\",\"OPUS\",\"PCM\"]" "$(pget audio.mic_format)"
 pub_select "mic_sample_rate" "$HOST Mic Sample Rate"  "/usr/sbin/thingino-cmd mic_sample_rate {{ value | int }}" \
   "[\"8000\",\"12000\",\"16000\",\"24000\",\"48000\"]" "$(pget audio.mic_sample_rate)"
@@ -349,19 +349,19 @@ pub_select "spk_sample_rate" "$HOST Speaker Sample Rate" "/usr/sbin/thingino-cmd
 echo "--- Motion Detection ---"
 pub_switch "motion" "$HOST Motion Detection" "/usr/sbin/thingino-cmd motion_on" "/usr/sbin/thingino-cmd motion_off"
 pub_number "motion_sensitivity" "$HOST Motion Sensitivity" "/usr/sbin/thingino-cmd motion_sensitivity {{ value | int }}" 1 8 1 "" "$(pget motion.sensitivity)"
-pub_number "motion_cooldown"    "Motion Cooldown"    "/usr/sbin/thingino-cmd motion_cooldown {{ value | int }}"    1 60 1 "s" "$(pget motion.cooldown_time)"
+pub_number "motion_cooldown"    "$HOST Motion Cooldown"    "/usr/sbin/thingino-cmd motion_cooldown {{ value | int }}"    1 60 1 "s" "$(pget motion.cooldown_time)"
 
 # ============================================
 # RECORDING
 # ============================================
 echo "--- Recording ---"
-pub_switch "recording_ch0"      "Recording Ch0"      "/usr/sbin/thingino-cmd rec_ch0_on"       "/usr/sbin/thingino-cmd rec_ch0_off"
-pub_switch "recording_ch1"      "Recording Ch1"      "/usr/sbin/thingino-cmd rec_ch1_on"       "/usr/sbin/thingino-cmd rec_ch1_off"
+pub_switch "recording_ch0"      "$HOST Recording Ch0"      "/usr/sbin/thingino-cmd rec_ch0_on"       "/usr/sbin/thingino-cmd rec_ch0_off"
+pub_switch "recording_ch1"      "$HOST Recording Ch1"      "/usr/sbin/thingino-cmd rec_ch1_on"       "/usr/sbin/thingino-cmd rec_ch1_off"
 pub_switch "recording_autostart" "$HOST Recording Autostart" "/usr/sbin/thingino-cmd rec_autostart_on" "/usr/sbin/thingino-cmd rec_autostart_off"
-pub_switch "recording_cleanup"  "Recording Cleanup"  "/usr/sbin/thingino-cmd rec_cleanup_on"   "/usr/sbin/thingino-cmd rec_cleanup_off"
+pub_switch "recording_cleanup"  "$HOST Recording Cleanup"  "/usr/sbin/thingino-cmd rec_cleanup_on"   "/usr/sbin/thingino-cmd rec_cleanup_off"
 
-pub_number "clip_duration"  "Clip Duration"   "/usr/sbin/thingino-cmd clip_duration {{ value | int }}"  10  3600 10  "s"  "$(pget recorder.duration)"
-pub_number "storage_limit"  "Storage Limit"   "/usr/sbin/thingino-cmd storage_limit {{ value | int }}"   1   128  1  "GB" "$(pget recorder.limit)"
+pub_number "clip_duration"  "$HOST Clip Duration"   "/usr/sbin/thingino-cmd clip_duration {{ value | int }}"  10  3600 10  "s"  "$(pget recorder.duration)"
+pub_number "storage_limit"  "$HOST Storage Limit"   "/usr/sbin/thingino-cmd storage_limit {{ value | int }}"   1   128  1  "GB" "$(pget recorder.limit)"
 pub_number "min_free_space" "$HOST Min Free Space"  "/usr/sbin/thingino-cmd min_free_space {{ value | int }}" 100 2000 100 "MB" "$(pget recorder.min_free_mb)"
 
 # ============================================
@@ -369,7 +369,7 @@ pub_number "min_free_space" "$HOST Min Free Space"  "/usr/sbin/thingino-cmd min_
 # ============================================
 echo "--- Timelapse ---"
 pub_switch "timelapse" "$HOST Timelapse" "/usr/sbin/thingino-cmd tl_on" "/usr/sbin/thingino-cmd tl_off"
-pub_number "timelapse_interval"  "Timelapse Interval"  "/usr/sbin/thingino-cmd tl_interval {{ value | int }}"  1 60 1 "min"  "1"
+pub_number "timelapse_interval"  "$HOST Timelapse Interval"  "/usr/sbin/thingino-cmd tl_interval {{ value | int }}"  1 60 1 "min"  "1"
 pub_number "timelapse_retention" "$HOST Timelapse Retention" "/usr/sbin/thingino-cmd tl_retention {{ value | int }}" 1 30 1 "days" "7"
 
 # ============================================
