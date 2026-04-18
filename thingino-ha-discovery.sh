@@ -30,55 +30,73 @@ IMAGING="http://localhost/x/json-imaging.cgi?token=$TOKEN"
 MOUNT=$(jct /etc/prudynt.json get recorder.mount 2>/dev/null | tr -d '"')
 CMD="$1"
 VAL="$2"
+SAVE='{"action":{"save_config":null}}'
+
+save_api()   { curl -s -X POST "$API"   -H "Content-Type: application/json" -d "$SAVE"; }
+save_send2() { curl -s -X POST "$SEND2" -H "Content-Type: application/json" -d "$SAVE"; }
 
 case "$CMD" in
+  # Image numbers
   brightness|contrast|saturation|sharpness|hue|ae_compensation|defog_strength|drc_strength|highlight_depress|sinter_strength|temper_strength|backlight_compensation|max_again|max_dgain|wb_rgain|wb_bgain)
     printf '{"image":{"%s":%s}}' "$CMD" "$VAL" | prudyntctl json -
-    curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"action":{"save_config":null}}'
+    save_api
     ;;
-  hflip_on)   printf '{"image":{"hflip":true}}'  | prudyntctl json - ;;
-  hflip_off)  printf '{"image":{"hflip":false}}' | prudyntctl json - ;;
-  vflip_on)   printf '{"image":{"vflip":true}}'  | prudyntctl json - ;;
-  vflip_off)  printf '{"image":{"vflip":false}}' | prudyntctl json - ;;
+  # Image booleans
+  hflip_on)   printf '{"image":{"hflip":true}}' | prudyntctl json -; save_api ;;
+  hflip_off)  printf '{"image":{"hflip":false}}' | prudyntctl json -; save_api ;;
+  vflip_on)   printf '{"image":{"vflip":true}}' | prudyntctl json -; save_api ;;
+  vflip_off)  printf '{"image":{"vflip":false}}' | prudyntctl json -; save_api ;;
+  # Image selects
   anti_flicker|core_wb_mode|running_mode)
     printf '{"image":{"%s":%s}}' "$CMD" "$VAL" | prudyntctl json -
-    curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"action":{"save_config":null}}'
+    save_api
     ;;
+  # Imaging CGI
   wide_dynamic_range|tone|noise_reduction)
     curl -s "$IMAGING" -d "${CMD}=${VAL}"
     ;;
+  # Audio numbers
   mic_vol|mic_gain|mic_noise_suppression|mic_alc_gain|mic_agc_compression_gain_db|mic_agc_target_level_dbfs|mic_bitrate|spk_vol|spk_gain)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
       -d "{\"audio\":{\"${CMD}\":${VAL}},\"action\":{\"restart_thread\":4}}"
+    save_api
     ;;
+  # Audio format
   mic_format)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
       -d "{\"audio\":{\"mic_format\":\"${VAL}\"},\"action\":{\"restart_thread\":4}}"
+    save_api
     ;;
   mic_sample_rate|spk_sample_rate)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
       -d "{\"audio\":{\"${CMD}\":${VAL}},\"action\":{\"restart_thread\":4}}"
+    save_api
     ;;
-  mic_on)      curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_enabled":true}}'  ;;
-  mic_off)     curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_enabled":false}}' ;;
-  mic_agc_on)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_agc_enabled":true},"action":{"restart_thread":4}}'  ;;
-  mic_agc_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_agc_enabled":false},"action":{"restart_thread":4}}' ;;
-  mic_hpf_on)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_high_pass_filter":true},"action":{"restart_thread":4}}'  ;;
-  mic_hpf_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_high_pass_filter":false},"action":{"restart_thread":4}}' ;;
-  stereo_on)   curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"force_stereo":true},"action":{"restart_thread":4}}'  ;;
-  stereo_off)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"force_stereo":false},"action":{"restart_thread":4}}' ;;
-  motion_on)   curl -s -X POST "$SEND2" -H "Content-Type: application/json" -d '{"motion":{"enabled":true}}'  ;;
-  motion_off)  curl -s -X POST "$SEND2" -H "Content-Type: application/json" -d '{"motion":{"enabled":false}}' ;;
+  # Audio switches
+  mic_on)      curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_enabled":true}}'; save_api ;;
+  mic_off)     curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_enabled":false}}'; save_api ;;
+  mic_agc_on)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_agc_enabled":true},"action":{"restart_thread":4}}'; save_api ;;
+  mic_agc_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_agc_enabled":false},"action":{"restart_thread":4}}'; save_api ;;
+  mic_hpf_on)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_high_pass_filter":true},"action":{"restart_thread":4}}'; save_api ;;
+  mic_hpf_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"mic_high_pass_filter":false},"action":{"restart_thread":4}}'; save_api ;;
+  stereo_on)   curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"force_stereo":true},"action":{"restart_thread":4}}'; save_api ;;
+  stereo_off)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"audio":{"force_stereo":false},"action":{"restart_thread":4}}'; save_api ;;
+  # Motion
+  motion_on)   curl -s -X POST "$SEND2" -H "Content-Type: application/json" -d '{"motion":{"enabled":true}}'; save_send2 ;;
+  motion_off)  curl -s -X POST "$SEND2" -H "Content-Type: application/json" -d '{"motion":{"enabled":false}}'; save_send2 ;;
   motion_sensitivity)
     curl -s -X POST "$SEND2" -H "Content-Type: application/json" -d "{\"motion\":{\"sensitivity\":${VAL}}}"
+    save_send2
     ;;
   motion_cooldown)
     curl -s -X POST "$SEND2" -H "Content-Type: application/json" -d "{\"motion\":{\"cooldown_time\":${VAL}}}"
+    save_send2
     ;;
+  # Recording
   rec_ch0_on)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"mp4":{"start":{"channel":0}}}' ;;
-  rec_ch0_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"mp4":{"stop":{"channel":0}}}'  ;;
+  rec_ch0_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"mp4":{"stop":{"channel":0}}}' ;;
   rec_ch1_on)  curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"mp4":{"start":{"channel":1}}}' ;;
-  rec_ch1_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"mp4":{"stop":{"channel":1}}}'  ;;
+  rec_ch1_off) curl -s -X POST "$API" -H "Content-Type: application/json" -d '{"mp4":{"stop":{"channel":1}}}' ;;
   rec_autostart_on)
     curl -s -X POST "$RECORD" -H "Content-Type: application/x-www-form-urlencoded" \
       -d "form=video&vr_mount=${MOUNT}&vr_device_path=%25hostname&vr_filename=%25Y/%25m/%25d/%25H-%25M-%25S&vr_channel=0&vr_duration=60&vr_limit=15&vr_min_free_mb=500&vr_check_interval=60&vr_autostart=true&vr_cleanup_enabled=false"
@@ -123,42 +141,49 @@ case "$CMD" in
     curl -s -X POST "$RECORD" -H "Content-Type: application/x-www-form-urlencoded" \
       -d "form=timelapse&tl_enabled=true&tl_mount=${MOUNT}&tl_filepath=%25hostname/timelapses&tl_filename=%25Y%25m%25d/%25Y%25m%25dT%25H%25M%25S.jpg&tl_interval=1&tl_keep_days=${VAL}&tl_preset_enabled=false&tl_ircut=false&tl_ir850=false&tl_ir940=false&tl_white=false&tl_color=false"
     ;;
+  # Stream bitrate
   bitrate_0|bitrate_1)
     CH=$(echo "$CMD" | sed 's/bitrate_//')
     /sbin/imp-control bitrate "$CH" "$VAL"
     ;;
+  # Stream audio/video
   stream_audio_on)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
       -d "{\"${VAL}\":{\"audio_enabled\":true},\"action\":{\"restart_thread\":3}}"
+    save_api
     ;;
   stream_audio_off)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
       -d "{\"${VAL}\":{\"audio_enabled\":false},\"action\":{\"restart_thread\":3}}"
+    save_api
     ;;
   stream_video_on)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
       -d "{\"${VAL}\":{\"video_enabled\":true},\"action\":{\"restart_thread\":3}}"
+    save_api
     ;;
   stream_video_off)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
       -d "{\"${VAL}\":{\"video_enabled\":false},\"action\":{\"restart_thread\":3}}"
+    save_api
     ;;
   stream_set)
-    # VAL format: "stream0 field value"
     STREAM=$(echo "$VAL" | cut -d' ' -f1)
     FIELD=$(echo "$VAL" | cut -d' ' -f2)
     VALUE=$(echo "$VAL" | cut -d' ' -f3)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
-      -d "{\"${STREAM}\":{\"${FIELD}\":${VALUE},\"action\":{\"restart_thread\":3}}"
+      -d "{\"${STREAM}\":{\"${FIELD}\":${VALUE}},\"action\":{\"restart_thread\":3}}"
+    save_api
     ;;
   stream_set_str)
-    # VAL format: "stream0 field value" for string values
     STREAM=$(echo "$VAL" | cut -d' ' -f1)
     FIELD=$(echo "$VAL" | cut -d' ' -f2)
     VALUE=$(echo "$VAL" | cut -d' ' -f3)
     curl -s -X POST "$API" -H "Content-Type: application/json" \
-      -d "{\"${STREAM}\":{\"${FIELD}\":\"${VALUE}\",\"action\":{\"restart_thread\":3}}"
+      -d "{\"${STREAM}\":{\"${FIELD}\":\"${VALUE}\"},\"action\":{\"restart_thread\":3}}"
+    save_api
     ;;
+  # Day/Night/Color
   daynight)
     curl -s -X POST "http://localhost/x/json-imp.cgi?token=$TOKEN" \
       -H "Content-Type: application/json" -d "{\"cmd\":\"daynight\",\"val\":\"${VAL}\"}"
@@ -171,12 +196,9 @@ case "$CMD" in
     curl -s -X POST "http://localhost/x/json-imp.cgi?token=$TOKEN" \
       -H "Content-Type: application/json" -d '{"cmd":"color","val":1}'
     ;;
-  play)
-    play "$VAL"
-    ;;
-  play_stop)
-    play stop
-    ;;
+  # Sound
+  play)      play "$VAL" ;;
+  play_stop) play stop ;;
   *)
     echo "Unknown command: $CMD"
     exit 1
