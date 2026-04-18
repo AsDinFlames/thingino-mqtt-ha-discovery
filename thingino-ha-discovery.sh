@@ -183,6 +183,11 @@ case "$CMD" in
       -d "{\"${STREAM}\":{\"${FIELD}\":\"${VALUE}\"},\"action\":{\"restart_thread\":3}}"
     save_api
     ;;
+  # PTZ fast via json-motor.cgi
+  ptz_left_fast)  curl -s "http://localhost/x/json-motor.cgi?d=g&x=-100&y=0&token=$TOKEN" ;;
+  ptz_right_fast) curl -s "http://localhost/x/json-motor.cgi?d=g&x=100&y=0&token=$TOKEN" ;;
+  ptz_up_fast)    curl -s "http://localhost/x/json-motor.cgi?d=g&x=0&y=-100&token=$TOKEN" ;;
+  ptz_down_fast)  curl -s "http://localhost/x/json-motor.cgi?d=g&x=0&y=100&token=$TOKEN" ;;
   # Day/Night/Color
   daynight)
     curl -s -X POST "http://localhost/x/json-imp.cgi?token=$TOKEN" \
@@ -195,6 +200,10 @@ case "$CMD" in
   color_off)
     curl -s -X POST "http://localhost/x/json-imp.cgi?token=$TOKEN" \
       -H "Content-Type: application/json" -d '{"cmd":"color","val":1}'
+    ;;
+  # Motor reset
+  position_reset)
+    motors -r
     ;;
   # Sound
   play)      play "$VAL" ;;
@@ -303,16 +312,21 @@ pub_switch "color" "Color Mode" "/usr/sbin/thingino-cmd color_on" "/usr/sbin/thi
 pub_select "daynight_mode" "Day/Night Mode" "/usr/sbin/thingino-cmd daynight {{ value }}" \
   "[\"day\",\"night\",\"auto\"]" "auto"
 pub_button "reboot" "Reboot" "reboot"
+pub_button "position_reset" "Position Reset" "/usr/sbin/thingino-cmd position_reset"
 
 # ============================================
 # PTZ
 # ============================================
 echo "--- PTZ ---"
 if [ -x /usr/sbin/ptz-ctrl ]; then
-  pub_button "ptz_left"  "PTZ Left"  "echo a | timeout 1 /usr/sbin/ptz-ctrl"
-  pub_button "ptz_right" "PTZ Right" "echo d | timeout 1 /usr/sbin/ptz-ctrl"
-  pub_button "ptz_up"    "PTZ Up"    "echo w | timeout 1 /usr/sbin/ptz-ctrl"
-  pub_button "ptz_down"  "PTZ Down"  "echo s | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_left"       "PTZ Left"       "echo a | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_right"      "PTZ Right"      "echo d | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_up"         "PTZ Up"         "echo w | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_down"       "PTZ Down"       "echo s | timeout 1 /usr/sbin/ptz-ctrl"
+  pub_button "ptz_left_fast"  "PTZ Left Fast"  "/usr/sbin/thingino-cmd ptz_left_fast"
+  pub_button "ptz_right_fast" "PTZ Right Fast" "/usr/sbin/thingino-cmd ptz_right_fast"
+  pub_button "ptz_up_fast"    "PTZ Up Fast"    "/usr/sbin/thingino-cmd ptz_up_fast"
+  pub_button "ptz_down_fast"  "PTZ Down Fast"  "/usr/sbin/thingino-cmd ptz_down_fast"
 fi
 if [ -x /usr/sbin/ptz_presets ]; then
   for i in 0 1 2 3 4 5 6 7; do
