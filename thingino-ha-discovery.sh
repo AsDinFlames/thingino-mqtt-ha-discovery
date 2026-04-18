@@ -127,6 +127,36 @@ case "$CMD" in
     CH=$(echo "$CMD" | sed 's/bitrate_//')
     /sbin/imp-control bitrate "$CH" "$VAL"
     ;;
+  stream_audio_on)
+    curl -s -X POST "$API" -H "Content-Type: application/json" \
+      -d "{\"${VAL}\":{\"audio_enabled\":true},\"action\":{\"restart_thread\":3}}"
+    ;;
+  stream_audio_off)
+    curl -s -X POST "$API" -H "Content-Type: application/json" \
+      -d "{\"${VAL}\":{\"audio_enabled\":false},\"action\":{\"restart_thread\":3}}"
+    ;;
+  stream_video_on)
+    curl -s -X POST "$API" -H "Content-Type: application/json" \
+      -d "{\"${VAL}\":{\"video_enabled\":true},\"action\":{\"restart_thread\":3}}"
+    ;;
+  stream_video_off)
+    curl -s -X POST "$API" -H "Content-Type: application/json" \
+      -d "{\"${VAL}\":{\"video_enabled\":false},\"action\":{\"restart_thread\":3}}"
+    ;;
+  stream_set)
+    # VAL format: "stream0 field value"
+    STREAM=$(echo "$VAL" | cut -d' ' -f1)
+    FIELD=$(echo "$VAL" | cut -d' ' -f2)
+    VALUE=$(echo "$VAL" | cut -d' ' -f3)
+    curl -s -X POST "$API" -H "Content-Type: application/json"       -d "{"${STREAM}":{"${FIELD}":${VALUE}},"action":{"restart_thread":3}}"
+    ;;
+  stream_set_str)
+    # VAL format: "stream0 field value" for string values
+    STREAM=$(echo "$VAL" | cut -d' ' -f1)
+    FIELD=$(echo "$VAL" | cut -d' ' -f2)
+    VALUE=$(echo "$VAL" | cut -d' ' -f3)
+    curl -s -X POST "$API" -H "Content-Type: application/json"       -d "{"${STREAM}":{"${FIELD}":"${VALUE}"},"action":{"restart_thread":3}}"
+    ;;
   daynight)
     curl -s -X POST "http://localhost/x/json-imp.cgi?token=$TOKEN" \
       -H "Content-Type: application/json" -d "{\"cmd\":\"daynight\",\"val\":\"${VAL}\"}"
@@ -179,6 +209,18 @@ pub_switch() {
   pub "homeassistant/switch/${CAM}_${uid}/config" \
     "{\"name\":\"$name\",\"unique_id\":\"${CAM}_${uid}\",\"command_topic\":\"$TOPIC\",\"payload_on\":\"$on\",\"payload_off\":\"$off\",\"optimistic\":true,\"device\":$DEVICE}"
   echo "  [switch] $name"
+}
+
+pub_switch_state() {
+  local uid="$1" name="$2" on="$3" off="$4" initial="$5"
+  pub "homeassistant/switch/${CAM}_${uid}/config" \
+    "{\"name\":\"$name\",\"unique_id\":\"${CAM}_${uid}\",\"command_topic\":\"$TOPIC\",\"payload_on\":\"$on\",\"payload_off\":\"$off\",\"state_topic\":\"$CAM/state/$uid\",\"state_on\":\"ON\",\"state_off\":\"OFF\",\"optimistic\":true,\"device\":$DEVICE}"
+  if [ "$initial" = "true" ] || [ "$initial" = "1" ]; then
+    pub_state "$uid" "ON"
+  else
+    pub_state "$uid" "OFF"
+  fi
+  echo "  [switch] $name (state: $initial)"
 }
 
 pub_button() {
@@ -287,8 +329,8 @@ for field in wb_rgain wb_bgain; do
   pub_number "$field" "$name" "/usr/sbin/thingino-cmd $field {{ value | int }}" 0 255 1 "" "${val:-0}"
 done
 
-pub_switch "hflip" "Horizontal Flip" "/usr/sbin/thingino-cmd hflip_on" "/usr/sbin/thingino-cmd hflip_off"
-pub_switch "vflip" "Vertical Flip"   "/usr/sbin/thingino-cmd vflip_on" "/usr/sbin/thingino-cmd vflip_off"
+pub_switch_state "hflip" "Horizontal Flip" "/usr/sbin/thingino-cmd hflip_on" "/usr/sbin/thingino-cmd hflip_off" "$(pget image.hflip)"
+pub_switch_state "vflip" "Vertical Flip" "/usr/sbin/thingino-cmd vflip_on" "/usr/sbin/thingino-cmd vflip_off" "$(pget image.vflip)"
 
 # ============================================
 # IMAGING CGI CONTROLS
@@ -316,10 +358,10 @@ pub_select "running_mode" "Running Mode" "/usr/sbin/thingino-cmd running_mode {{
 # AUDIO CONTROLS
 # ============================================
 echo "--- Audio Controls ---"
-pub_switch "mic"          "Mic"          "/usr/sbin/thingino-cmd mic_on"     "/usr/sbin/thingino-cmd mic_off"
-pub_switch "mic_agc"      "Mic AGC"      "/usr/sbin/thingino-cmd mic_agc_on" "/usr/sbin/thingino-cmd mic_agc_off"
-pub_switch "mic_hpf"      "Mic HPF"      "/usr/sbin/thingino-cmd mic_hpf_on" "/usr/sbin/thingino-cmd mic_hpf_off"
-pub_switch "force_stereo" "Force Stereo" "/usr/sbin/thingino-cmd stereo_on"  "/usr/sbin/thingino-cmd stereo_off"
+pub_switch_state "mic"    "Mic"          "/usr/sbin/thingino-cmd mic_on"     "/usr/sbin/thingino-cmd mic_off"   "$(pget audio.mic_enabled)"
+pub_switch_state "mic_agc" "Mic AGC"     "/usr/sbin/thingino-cmd mic_agc_on" "/usr/sbin/thingino-cmd mic_agc_off" "$(pget audio.mic_agc_enabled)"
+pub_switch_state "mic_hpf" "Mic HPF"     "/usr/sbin/thingino-cmd mic_hpf_on" "/usr/sbin/thingino-cmd mic_hpf_off" "$(pget audio.mic_high_pass_filter)"
+pub_switch_state "force_stereo" "Force Stereo" "/usr/sbin/thingino-cmd stereo_on" "/usr/sbin/thingino-cmd stereo_off" "$(pget audio.force_stereo)"
 
 pub_number "mic_vol"                     "Mic Volume"          "/usr/sbin/thingino-cmd mic_vol {{ value | int }}"                     0   100 1 ""     "$(pget audio.mic_vol)"
 pub_number "mic_gain"                    "Mic Gain"            "/usr/sbin/thingino-cmd mic_gain {{ value | int }}"                    0    31 1 ""     "$(pget audio.mic_gain)"
@@ -342,7 +384,7 @@ pub_select "spk_sample_rate" "Speaker Sample Rate" "/usr/sbin/thingino-cmd spk_s
 # MOTION DETECTION
 # ============================================
 echo "--- Motion Detection ---"
-pub_switch "motion" "Motion Detection" "/usr/sbin/thingino-cmd motion_on" "/usr/sbin/thingino-cmd motion_off"
+pub_switch_state "motion" "Motion Detection" "/usr/sbin/thingino-cmd motion_on" "/usr/sbin/thingino-cmd motion_off" "$(pget motion.enabled)"
 pub_number "motion_sensitivity" "Motion Sensitivity" "/usr/sbin/thingino-cmd motion_sensitivity {{ value | int }}" 1 8 1 "" "$(pget motion.sensitivity)"
 pub_number "motion_cooldown"    "Motion Cooldown"    "/usr/sbin/thingino-cmd motion_cooldown {{ value | int }}"    1 60 1 "s" "$(pget motion.cooldown_time)"
 
@@ -352,8 +394,8 @@ pub_number "motion_cooldown"    "Motion Cooldown"    "/usr/sbin/thingino-cmd mot
 echo "--- Recording ---"
 pub_switch "recording_ch0"       "Recording Ch0"       "/usr/sbin/thingino-cmd rec_ch0_on"       "/usr/sbin/thingino-cmd rec_ch0_off"
 pub_switch "recording_ch1"       "Recording Ch1"       "/usr/sbin/thingino-cmd rec_ch1_on"       "/usr/sbin/thingino-cmd rec_ch1_off"
-pub_switch "recording_autostart" "Recording Autostart" "/usr/sbin/thingino-cmd rec_autostart_on" "/usr/sbin/thingino-cmd rec_autostart_off"
-pub_switch "recording_cleanup"   "Recording Cleanup"   "/usr/sbin/thingino-cmd rec_cleanup_on"   "/usr/sbin/thingino-cmd rec_cleanup_off"
+pub_switch_state "recording_autostart" "Recording Autostart" "/usr/sbin/thingino-cmd rec_autostart_on" "/usr/sbin/thingino-cmd rec_autostart_off" "$(pget recorder.autostart)"
+pub_switch_state "recording_cleanup" "Recording Cleanup" "/usr/sbin/thingino-cmd rec_cleanup_on" "/usr/sbin/thingino-cmd rec_cleanup_off" "$(pget recorder.cleanup_enabled)"
 
 pub_number "clip_duration"  "Clip Duration"  "/usr/sbin/thingino-cmd clip_duration {{ value | int }}"  10   3600  10 "s"  "$(pget recorder.duration)"
 pub_number "storage_limit"  "Storage Limit"  "/usr/sbin/thingino-cmd storage_limit {{ value | int }}"   1    128   1 "GB" "$(pget recorder.limit)"
@@ -363,7 +405,7 @@ pub_number "min_free_space" "Min Free Space" "/usr/sbin/thingino-cmd min_free_sp
 # TIMELAPSE
 # ============================================
 echo "--- Timelapse ---"
-pub_switch "timelapse" "Timelapse" "/usr/sbin/thingino-cmd tl_on" "/usr/sbin/thingino-cmd tl_off"
+pub_switch_state "timelapse" "Timelapse" "/usr/sbin/thingino-cmd tl_on" "/usr/sbin/thingino-cmd tl_off" "$(pget timelapse.enabled)"
 pub_number "timelapse_interval"  "Timelapse Interval"  "/usr/sbin/thingino-cmd tl_interval {{ value | int }}"  1 60 1 "min"  "1"
 pub_number "timelapse_retention" "Timelapse Retention" "/usr/sbin/thingino-cmd tl_retention {{ value | int }}" 1 30 1 "days" "7"
 
@@ -398,11 +440,69 @@ if [ -n "$(ls /usr/share/sounds/*.opus 2>/dev/null)" ]; then
 fi
 
 # ============================================
-# STREAM BITRATE
+# STREAM SETTINGS (dynamic per stream)
 # ============================================
-echo "--- Stream ---"
-pub_number "bitrate_0" "Stream 0 Bitrate" "/usr/sbin/thingino-cmd bitrate_0 {{ value | int }}" 256 8192 128 "kbps" "2048"
-pub_number "bitrate_1" "Stream 1 Bitrate" "/usr/sbin/thingino-cmd bitrate_1 {{ value | int }}" 256 4096 128 "kbps" "1024"
+echo "--- Stream Settings ---"
+
+for stream in stream0 stream1; do
+  # Check if stream exists and is enabled
+  stream_enabled=$(jct /etc/prudynt.json get "${stream}.enabled" 2>/dev/null | tr -d '"')
+  [ "$stream_enabled" = "true" ] || continue
+
+  # Human readable name
+  case "$stream" in
+    stream0) SNAME="Main Stream" ;;
+    stream1) SNAME="Sub Stream" ;;
+    *)       SNAME="$stream" ;;
+  esac
+
+  echo "  Processing $SNAME ($stream)..."
+
+  # Audio/Video switches with state
+  audio_st=$(jct /etc/prudynt.json get "${stream}.audio_enabled" 2>/dev/null | tr -d '"')
+  video_st=$(jct /etc/prudynt.json get "${stream}.video_enabled" 2>/dev/null | tr -d '"')
+  pub_switch_state "${stream}_audio" "$SNAME Audio" \
+    "/usr/sbin/thingino-cmd stream_audio_on $stream" \
+    "/usr/sbin/thingino-cmd stream_audio_off $stream" "$audio_st"
+  pub_switch_state "${stream}_video" "$SNAME Video" \
+    "/usr/sbin/thingino-cmd stream_video_on $stream" \
+    "/usr/sbin/thingino-cmd stream_video_off $stream" "$video_st"
+
+  # Bitrate
+  val=$(jct /etc/prudynt.json get "${stream}.bitrate" 2>/dev/null | tr -d '"')
+  [ -n "$val" ] && pub_number "${stream}_bitrate" "$SNAME Bitrate"     "/usr/sbin/thingino-cmd stream_set $stream bitrate {{ value | int }}"     256 8192 128 "kbps" "$val"
+
+  # FPS
+  val=$(jct /etc/prudynt.json get "${stream}.fps" 2>/dev/null | tr -d '"')
+  [ -n "$val" ] && pub_number "${stream}_fps" "$SNAME FPS"     "/usr/sbin/thingino-cmd stream_set $stream fps {{ value | int }}"     1 30 1 "" "$val"
+
+  # GOP
+  val=$(jct /etc/prudynt.json get "${stream}.gop" 2>/dev/null | tr -d '"')
+  [ -n "$val" ] && pub_number "${stream}_gop" "$SNAME GOP"     "/usr/sbin/thingino-cmd stream_set $stream gop {{ value | int }}"     1 120 1 "" "$val"
+
+  # Max GOP
+  val=$(jct /etc/prudynt.json get "${stream}.max_gop" 2>/dev/null | tr -d '"')
+  [ -n "$val" ] && pub_number "${stream}_max_gop" "$SNAME Max GOP"     "/usr/sbin/thingino-cmd stream_set $stream max_gop {{ value | int }}"     1 120 1 "" "$val"
+
+  # Buffers
+  val=$(jct /etc/prudynt.json get "${stream}.buffers" 2>/dev/null | tr -d '"')
+  [ -n "$val" ] && pub_number "${stream}_buffers" "$SNAME Buffers"     "/usr/sbin/thingino-cmd stream_set $stream buffers {{ value | int }}"     1 4 1 "" "$val"
+
+  # Width
+  val=$(jct /etc/prudynt.json get "${stream}.width" 2>/dev/null | tr -d '"')
+  [ -n "$val" ] && pub_number "${stream}_width" "$SNAME Width"     "/usr/sbin/thingino-cmd stream_set $stream width {{ value | int }}"     160 1920 160 "px" "$val"
+
+  # Height
+  val=$(jct /etc/prudynt.json get "${stream}.height" 2>/dev/null | tr -d '"')
+  [ -n "$val" ] && pub_number "${stream}_height" "$SNAME Height"     "/usr/sbin/thingino-cmd stream_set $stream height {{ value | int }}"     90 1080 90 "px" "$val"
+
+
+
+  # Mode select
+  val=$(jct /etc/prudynt.json get "${stream}.mode" 2>/dev/null | tr -d '"')
+  pub_select "${stream}_mode" "$SNAME Mode" "/usr/sbin/thingino-cmd stream_set_str $stream mode {{ value }}" "[\"CBR\",\"VBR\"]" "$val"
+
+done
 
 echo ""
 echo "HA Discovery complete! All entities published for $HOST"
