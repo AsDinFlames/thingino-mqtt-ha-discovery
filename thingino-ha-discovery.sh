@@ -148,14 +148,16 @@ case "$CMD" in
     STREAM=$(echo "$VAL" | cut -d' ' -f1)
     FIELD=$(echo "$VAL" | cut -d' ' -f2)
     VALUE=$(echo "$VAL" | cut -d' ' -f3)
-    curl -s -X POST "$API" -H "Content-Type: application/json"       -d "{"${STREAM}":{"${FIELD}":${VALUE}},"action":{"restart_thread":3}}"
+    curl -s -X POST "$API" -H "Content-Type: application/json" \
+      -d "{\"${STREAM}\":{\"${FIELD}\":${VALUE},\"action\":{\"restart_thread\":3}}"
     ;;
   stream_set_str)
     # VAL format: "stream0 field value" for string values
     STREAM=$(echo "$VAL" | cut -d' ' -f1)
     FIELD=$(echo "$VAL" | cut -d' ' -f2)
     VALUE=$(echo "$VAL" | cut -d' ' -f3)
-    curl -s -X POST "$API" -H "Content-Type: application/json"       -d "{"${STREAM}":{"${FIELD}":"${VALUE}"},"action":{"restart_thread":3}}"
+    curl -s -X POST "$API" -H "Content-Type: application/json" \
+      -d "{\"${STREAM}\":{\"${FIELD}\":\"${VALUE}\",\"action\":{\"restart_thread\":3}}"
     ;;
   daynight)
     curl -s -X POST "http://localhost/x/json-imp.cgi?token=$TOKEN" \
