@@ -4,6 +4,50 @@
 # MQTT discovery only references simple commands without quote issues
 
 # ============================================
+# ARGUMENT PARSING FOR OPTIONAL SSL
+# ============================================
+SSL_FLAGS=""
+
+usage() {
+  echo "Usage: $0 [OPTIONS]"
+  echo "Options:"
+  echo "  -s, --ssl         Enable SSL/TLS using standard system CA certificates"
+  echo "  -k, --insecure    Enable SSL/TLS ignoring certificate/hostname errors"
+  echo "  --cafile FILE     Enable SSL/TLS using a specific CA certificate file"
+  echo "  -h, --help        Show this help message"
+  exit 0
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -s|--ssl)
+      SSL_FLAGS="--capath /etc/ssl/certs"
+      shift
+      ;;
+    -k|--insecure)
+      SSL_FLAGS="--capath /etc/ssl/certs --insecure"
+      shift
+      ;;
+    --cafile)
+      if [ -n "$2" ]; then
+        SSL_FLAGS="--cafile $2"
+        shift 2
+      else
+        echo "Error: --cafile requires a file path."
+        exit 1
+      fi
+      ;;
+    -h|--help)
+      usage
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      usage
+      ;;
+  esac
+done
+
+# ============================================
 # READ CONFIG
 # ============================================
 BROKER=$(jct /etc/thingino.json get mqtt_sub.host 2>/dev/null | tr -d '"')
@@ -221,17 +265,6 @@ echo "Wrapper script created at /usr/sbin/thingino-cmd"
 # HELPER FUNCTIONS
 # ============================================
 
-# Set SSL options if port is 8883
-SSL_FLAGS=""
-if [ "$PORT" = "8883" ]; then
-  # Standard trusted certificates (e.g. Let's Encrypt / public CA)
-  # SSL_FLAGS="--capath /etc/ssl/certs"
-  # IF using a custom CA file (e.g., self-signed broker certificate):
-  # SSL_FLAGS="--cafile /etc/ssl/certs/ca.crt"
-  # IF using a self-signed certificate and getting verification errors:
-  SSL_FLAGS="--capath /etc/ssl/certs --insecure"
-fi
-
 pub() {
   mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" $SSL_FLAGS -r -t "$1" -m "$2"
 }
@@ -293,6 +326,7 @@ pub_select() {
 }
 
 echo "Starting HA Discovery for $HOST ($CAM) -> $BROKER:$PORT"
+[ -n "$SSL_FLAGS" ] && echo "SSL Mode active with flags: $SSL_FLAGS"
 
 # ============================================
 # PRIVACY
@@ -466,7 +500,6 @@ echo "--- Sounds ---"
 # Alarm switch - state stored as retained MQTT, used by HA automation
 pub "homeassistant/switch/${CAM}_alarm/config" \
   "{\"name\":\"Motion Alarm\",\"unique_id\":\"${CAM}_alarm\",\"command_topic\":\"$CAM/alarm\",\"state_topic\":\"$CAM/alarm\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"device\":$DEVICE}"
-#mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" -r -t "$CAM/alarm" -m "OFF"
 pub "$CAM/alarm" "OFF"
 echo "  [switch] Motion Alarm"
 
@@ -545,8 +578,6 @@ for stream in stream0 stream1; do
   # Height
   val=$(jct /etc/prudynt.json get "${stream}.height" 2>/dev/null | tr -d '"')
   [ -n "$val" ] && pub_number "${stream}_height" "$SNAME Height"     "/usr/sbin/thingino-cmd stream_set $stream height {{ value | int }}"     90 1080 90 "px" "$val"
-
-
 
   # Mode select
   val=$(jct /etc/prudynt.json get "${stream}.mode" 2>/dev/null | tr -d '"')
