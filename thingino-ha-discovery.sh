@@ -221,12 +221,23 @@ echo "Wrapper script created at /usr/sbin/thingino-cmd"
 # HELPER FUNCTIONS
 # ============================================
 
+# Set SSL options if port is 8883
+SSL_FLAGS=""
+if [ "$PORT" = "8883" ]; then
+  # Standard trusted certificates (e.g. Let's Encrypt / public CA)
+  # SSL_FLAGS="--capath /etc/ssl/certs"
+  # IF using a custom CA file (e.g., self-signed broker certificate):
+  # SSL_FLAGS="--cafile /etc/ssl/certs/ca.crt"
+  # IF using a self-signed certificate and getting verification errors:
+  SSL_FLAGS="--capath /etc/ssl/certs --insecure"
+fi
+
 pub() {
-  mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" -r -t "$1" -m "$2"
+  mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" $SSL_FLAGS -r -t "$1" -m "$2"
 }
 
 pub_state() {
-  mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" -r -t "$CAM/state/$1" -m "$2"
+  mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" $SSL_FLAGS -r -t "$CAM/state/$1" -m "$2"
 }
 
 has_gpio() {
@@ -455,7 +466,8 @@ echo "--- Sounds ---"
 # Alarm switch - state stored as retained MQTT, used by HA automation
 pub "homeassistant/switch/${CAM}_alarm/config" \
   "{\"name\":\"Motion Alarm\",\"unique_id\":\"${CAM}_alarm\",\"command_topic\":\"$CAM/alarm\",\"state_topic\":\"$CAM/alarm\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"device\":$DEVICE}"
-mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" -r -t "$CAM/alarm" -m "OFF"
+#mosquitto_pub -h "$BROKER" -p "$PORT" -u "$MQUSER" -P "$MQPASS" -r -t "$CAM/alarm" -m "OFF"
+pub "$CAM/alarm" "OFF"
 echo "  [switch] Motion Alarm"
 
 # Stop sound button
